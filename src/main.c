@@ -99,7 +99,6 @@ void main(void) {
 	while (1) {
 		data_update();
 		notify_event();
-		printk("notify at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
 	}
 }
 

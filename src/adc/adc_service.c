@@ -25,6 +25,6 @@ void adc_data_update(int16_t data) {
 
 void adc_raw_notify() {
     if (!adc_raw_notify_flag) return;
-
+    printk("notify at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
     bt_gatt_notify(NULL, &adc_service.attrs[1], &adc_raw, sizeof(adc_raw));
 }
