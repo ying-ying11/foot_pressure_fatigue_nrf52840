@@ -6,7 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - 2022-05-02
+## [0.2.0] - 2022-05-02
+### [Added]
+- Linked list model, have the append, clean, and encode function
+- Increase the ADC transmission speed
+
+## [0.1.0] - 2022-02-24
 ### [Added]
 - Sample ADC and MPU6050 data
 - Implement BLE with ADC and IMU Serveic

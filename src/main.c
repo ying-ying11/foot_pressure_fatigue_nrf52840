@@ -23,9 +23,6 @@
 #define THREAD_STACK_SIZE 500
 #define THREAD_PRIORITY 5
 
-K_SEM_DEFINE(adc_sem, 0, 1);
-K_SEM_DEFINE(imu_sem, 0, 1);
-
 const struct device *adc_dev;
 static int16_t adc_buffer[BUFFER_SIZE];
 const struct device *i2c_dev;
@@ -34,13 +31,12 @@ static struct mpu6050_data imu_data;
 void adc_sample_event() {
 	int err = 0;
 	while (true) {
-		k_sem_reset(&adc_sem);
 		err = adc_sample(adc_dev, adc_buffer, BUFFER_SIZE);
 		if (err) {
 			printk("Error in adc sampling: %d\n", err);
 			return;
 		}
-		k_sem_give(&adc_sem);
+		adc_data_update(adc_buffer[0]);
 		// printk("adc sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
 
 		// printk("ADC raw value: ");
@@ -55,26 +51,18 @@ void adc_sample_event() {
 void imu_sample_event() {
 	int err = 0;
 	while (true) {
-		k_sem_reset(&imu_sem);
 		err = mpu6050_sample(i2c_dev, &imu_data);
 		if (err) {
 			printk("Error in i2c sampling: %d\n", err);
 			return;
 		}
-		k_sem_give(&imu_sem);
+		imu_data_update(imu_data.ax, imu_data.ay, imu_data.az, imu_data.gx, imu_data.gy, imu_data.gz);
 		// printk("imu sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
 
 		// printk("ax: %d, ay: %d, az: %d\n", imu_data.ax, imu_data.ay, imu_data.az);
 		// printk("gx: %d, gy: %d, gz: %d\n", imu_data.gx, imu_data.gy, imu_data.gz);
 		k_msleep(IMU_SAMPLE_TIME);
 	}
-}
-
-void data_update() {
-	k_sem_take(&adc_sem, K_FOREVER);
-	adc_data_update(adc_buffer[0]);
-	k_sem_take(&imu_sem, K_FOREVER);
-	imu_data_update(imu_data.ax, imu_data.ay, imu_data.az, imu_data.gx, imu_data.gy, imu_data.gz);
 }
 
 void notify_event() {
@@ -97,8 +85,8 @@ void main(void) {
 	if (bt_init()) return;
 
 	while (1) {
-		data_update();
 		notify_event();
+		k_msleep(10);
 	}
 }
 
