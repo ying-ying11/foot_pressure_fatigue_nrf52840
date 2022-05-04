@@ -86,7 +86,7 @@ void main(void) {
 
 	while (1) {
 		notify_event();
-		k_msleep(10);
+		k_msleep(50);
 	}
 }
 

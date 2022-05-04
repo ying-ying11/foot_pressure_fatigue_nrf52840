@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2022-05-04
+### [Added]
+- Queue model, have the pop, push, and clean function
+
+### [Removed]
+- Linked list model
+
 ## [0.2.0] - 2022-05-02
 ### [Added]
 - Linked list model, have the append, clean, and encode function

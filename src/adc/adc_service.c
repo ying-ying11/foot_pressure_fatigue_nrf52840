@@ -2,23 +2,25 @@
 #include <bluetooth/gatt.h>
 #include <stdlib.h>
 
-#include "adc_list.h"
+#include "adc_queue.h"
 #include "adc_service.h"
+
+#define MAX_VALUE_AMOUNT 160
 
 static struct bt_uuid_128 adc_uuid = BT_UUID_INIT_128(ADC_SERVICE_UUID_VAL);
 static struct bt_uuid_128 adc_raw_uuid = BT_UUID_INIT_128(BT_UUID_128_ENCODE(0xD16F7A3D, 0x1897, 0x40EA, 0x9629, 0xBDF749AC5991));
 
-K_SEM_DEFINE(sem, 1, 1);
-
-static uint8_t *buffer;
-
-static bool list_switch = false, is_init = false;
-static adc_list_t *list0, *list1;
+static adc_queue_t *adc_values;
+static int16_t raw_array[MAX_VALUE_AMOUNT];
+static uint8_t buffer[247];
 
 static uint8_t adc_raw_notify_flag;
 
 static void adc_raw_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
 	adc_raw_notify_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
+    if (!adc_raw_notify_flag && adc_values) {
+        adc_queue_clean(adc_values);
+    }
 }
 
 BT_GATT_SERVICE_DEFINE(adc_service,
@@ -30,40 +32,61 @@ BT_GATT_SERVICE_DEFINE(adc_service,
 void adc_data_update(int16_t data) {
     if (!adc_raw_notify_flag) return;
 
-    k_sem_take(&sem, K_FOREVER);
-
-    if (!is_init) {
-        is_init = true;
-        list0 = malloc(sizeof(adc_list_t));
-        list1 = malloc(sizeof(adc_list_t));
+    if (!adc_values) adc_values = adc_queue_init();
+    if (adc_values->size > 1000) {
+        adc_queue_pop_amount(adc_values, raw_array, 100);
+        printk("blocked data over 1000, remove 100 data!!");
     }
-    if (list_switch) adc_list_append(list1, data);
-    else adc_list_append(list0, data);
+    adc_queue_push(adc_values, data);
 
-    k_sem_give(&sem);
+}
+
+uint16_t adc_encode() {
+    uint8_t amount = adc_values->size > MAX_VALUE_AMOUNT ? MAX_VALUE_AMOUNT : adc_values->size;
+    adc_queue_pop_amount(adc_values, raw_array, amount);
+
+    // calculate buffer size 
+    // list_size(2 bytes) | data...(x) | check_sum(1 byte)
+    uint16_t buffer_len = 2;
+    buffer_len += amount * 12 / 8;
+    if (amount % 2) buffer_len++;
+
+    // malloc buffer & add data size to head
+    buffer[0] = amount;
+
+    // put data into buffer
+    uint16_t loc = 1;
+    for (int i = 0; i < amount; i++) {
+        uint8_t hi_bit = (raw_array[i] >> 8) & 0x0F;
+        uint8_t lo_bit = raw_array[i] & 0xFF;
+        if (i % 2) {
+            buffer[loc] = buffer[loc] << 4 | hi_bit;
+            buffer[loc + 2] = lo_bit;
+            loc += 3;
+        }
+        else {
+            buffer[loc] = hi_bit;
+            buffer[loc + 1] = lo_bit;
+        }
+    }
+
+    // put check sum at last
+    uint8_t checksum_pos = buffer_len - 1;
+    
+    for (int i = 0; i < checksum_pos; i++) {
+        buffer[checksum_pos] += buffer[i];
+    }
+    return buffer_len;
 }
 
 uint32_t prev_us_time = 0;
 
 void adc_raw_notify() {
-    if (!adc_raw_notify_flag || !is_init) return;
-
-    k_sem_take(&sem, K_FOREVER);
-        list_switch = !list_switch;
-    k_sem_give(&sem);
-
-    adc_list_t *target_list = list_switch ? list0 : list1;
+    if (!adc_raw_notify_flag || !adc_values) return;
     
-    int16_t len = adc_list_encode_len(target_list);
-    buffer = malloc(len * sizeof(uint8_t));
-    adc_list_encode(target_list, buffer);
+    uint16_t len = adc_encode();
     bt_gatt_notify(NULL, &adc_service.attrs[1], buffer, len);
-
-    printk("data size: %d\n", target_list->size);
     printk("buffer length: %d\n", len);
-
-    free(buffer);
-    adc_list_clean(target_list);
 
     // measure notification time interval
     uint32_t time = k_cyc_to_us_near32(k_cycle_get_32());
