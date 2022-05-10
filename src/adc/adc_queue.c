@@ -4,6 +4,11 @@
 
 #include "adc_queue.h"
 
+#define QUEUE_BLOCK_SIZE 8
+#define QUEUE_BLOCK_COUNT 1024
+
+K_MEM_SLAB_DEFINE(queue_slab, QUEUE_BLOCK_SIZE, QUEUE_BLOCK_COUNT, sizeof(void *));
+
 adc_queue_t* adc_queue_init() {
     adc_queue_t *queue = malloc(sizeof(adc_queue_t));
     k_sem_init(&queue->lock, 1, 1);
@@ -13,9 +18,15 @@ adc_queue_t* adc_queue_init() {
 void adc_queue_push(adc_queue_t *queue, int16_t value) {
     k_sem_take(&queue->lock, K_FOREVER);
 
-    adc_node_t *node = malloc(sizeof(adc_node_t));
-    node->value = value;
-    node->next = NULL;
+    adc_node_t *node;
+    if (!k_mem_slab_alloc(&queue_slab, &node, K_NO_WAIT)) {
+        node->value = value;
+        node->next = NULL;
+    }
+    else {
+        printk("Memory allocation fail");
+        return;
+    }
 
     if (!queue->head) queue->head = node;
     else queue->tail->next = node;
@@ -38,7 +49,7 @@ void adc_queue_pop_amount(adc_queue_t *queue, int16_t *array, uint16_t amount) {
         temp = node;
         node = node->next;
         array[i] = temp->value;
-        free(temp);
+        k_mem_slab_free(&queue_slab, &temp);
     }
     queue->head = node;
 }
@@ -48,7 +59,7 @@ void adc_queue_clean(adc_queue_t *queue) {
     while (node) {
         temp = node;
         node = node->next;
-        free(temp);
+        k_mem_slab_free(&queue_slab, &temp);
     }
     queue->head = NULL;
     queue->tail = NULL;

@@ -14,7 +14,7 @@
 #include "mpu6050.h"
 #include "mpu6050_service.h"
 
-#define ADC_SAMPLE_TIME 1
+#define ADC_SAMPLE_TIME 2
 #define IMU_SAMPLE_TIME 100
 
 #define ADC_DEVICE_NAME DT_LABEL(DT_INST(0, nordic_nrf_saadc))
@@ -86,7 +86,7 @@ void main(void) {
 
 	while (1) {
 		notify_event();
-		k_msleep(50);
+		k_msleep(100);
 	}
 }
 
