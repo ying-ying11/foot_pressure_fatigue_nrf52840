@@ -72,6 +72,7 @@ uint16_t adc_encode() {
 
     // put check sum at last
     uint8_t checksum_pos = buffer_len - 1;
+    buffer[checksum_pos] = 0;
     
     for (int i = 0; i < checksum_pos; i++) {
         buffer[checksum_pos] += buffer[i];
