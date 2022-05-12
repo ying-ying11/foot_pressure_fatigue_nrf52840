@@ -60,12 +60,12 @@ uint16_t adc_encode() {
         uint8_t hi_bit = (raw_array[i] >> 8) & 0x0F;
         uint8_t lo_bit = raw_array[i] & 0xFF;
         if (i % 2) {
-            buffer[loc] = buffer[loc] << 4 | hi_bit;
+            buffer[loc] |= hi_bit;
             buffer[loc + 2] = lo_bit;
             loc += 3;
         }
         else {
-            buffer[loc] = hi_bit;
+            buffer[loc] = hi_bit << 4;
             buffer[loc + 1] = lo_bit;
         }
     }
