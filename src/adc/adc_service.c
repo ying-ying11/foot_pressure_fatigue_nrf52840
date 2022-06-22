@@ -10,6 +10,8 @@
 static struct bt_uuid_128 adc_uuid = BT_UUID_INIT_128(ADC_SERVICE_UUID_VAL);
 static struct bt_uuid_128 adc_raw_uuid = BT_UUID_INIT_128(BT_UUID_128_ENCODE(0xD16F7A3D, 0x1897, 0x40EA, 0x9629, 0xBDF749AC5991));
 
+static uint8_t package_num = 0;
+
 static adc_queue_t *adc_values;
 static int16_t raw_array[MAX_VALUE_AMOUNT];
 static uint8_t buffer[247];
@@ -20,6 +22,7 @@ static void adc_raw_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t va
 	adc_raw_notify_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
     if (!adc_raw_notify_flag && adc_values) {
         adc_queue_clean(adc_values);
+        package_num = 0;
     }
 }
 
@@ -46,16 +49,17 @@ uint16_t adc_encode() {
     adc_queue_pop_amount(adc_values, raw_array, amount);
 
     // calculate buffer size 
-    // list_size(2 bytes) | data...(x) | check_sum(1 byte)
-    uint16_t buffer_len = 2;
+    // package_number(1 bytes) | list_size(1 bytes) | data...(x) | check_sum(1 byte)
+    uint16_t buffer_len = 3;
     buffer_len += amount * 12 / 8;
     if (amount % 2) buffer_len++;
 
     // malloc buffer & add data size to head
-    buffer[0] = amount;
+    buffer[0] = package_num++;
+    buffer[1] = amount;
 
     // put data into buffer
-    uint16_t loc = 1;
+    uint16_t loc = 2;
     for (int i = 0; i < amount; i++) {
         uint8_t hi_bit = (raw_array[i] >> 8) & 0x0F;
         uint8_t lo_bit = raw_array[i] & 0xFF;

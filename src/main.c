@@ -57,6 +57,7 @@ void imu_sample_event() {
 			return;
 		}
 		imu_data_update(imu_data.ax, imu_data.ay, imu_data.az, imu_data.gx, imu_data.gy, imu_data.gz);
+
 		// printk("imu sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
 
 		// printk("ax: %d, ay: %d, az: %d\n", imu_data.ax, imu_data.ay, imu_data.az);
