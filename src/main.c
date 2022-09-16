@@ -55,18 +55,18 @@ void main(void) {
 	// ADC setup
     adc_dev = device_get_binding(ADC_DEVICE_NAME);
 	if (adc_init(adc_dev)) return;
-	adc_sample(adc_dev);
 
 	// I2C setup
 	i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
 	if (mpu6050_init(i2c_dev)) return;
 
-	// if (bt_init()) return;
+	if (bt_init()) return;
 
-	// while (1) {
-	// 	notify_event();
-	// 	k_msleep(100);
-	// }
+	adc_sample(adc_dev);
+	while (1) {
+		// notify_event();
+		k_msleep(100);
+	}
 }
 
 // K_THREAD_DEFINE(imu_sample_thread, THREAD_STACK_SIZE, imu_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);

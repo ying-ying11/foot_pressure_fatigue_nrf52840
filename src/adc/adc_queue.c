@@ -9,59 +9,36 @@
 
 K_MEM_SLAB_DEFINE(queue_slab, QUEUE_BLOCK_SIZE, QUEUE_BLOCK_COUNT, sizeof(void *));
 
-adc_queue_t* adc_queue_init() {
-    adc_queue_t *queue = malloc(sizeof(adc_queue_t));
-    k_sem_init(&queue->lock, 1, 1);
-    return queue;
-}
-
-void adc_queue_push(adc_queue_t *queue, int16_t value) {
-    k_sem_take(&queue->lock, K_FOREVER);
-
+void adc_queue_push(struct k_queue *queue, int16_t value) {
     adc_node_t *node;
     if (!k_mem_slab_alloc(&queue_slab, &node, K_NO_WAIT)) {
         node->value = value;
-        node->next = NULL;
     }
     else {
         printk("Memory allocation fail");
         return;
     }
 
-    if (!queue->head) queue->head = node;
-    else queue->tail->next = node;
-
-    queue->tail = node;
-    queue->size++;
-
-    k_sem_give(&queue->lock);
+    k_queue_append(queue, (void *) node);
 }
 
-void adc_queue_pop_amount(adc_queue_t *queue, int16_t *array, uint16_t amount) {
-    if (amount > queue->size) return;
-
-    k_sem_take(&queue->lock, K_FOREVER);
-    queue->size -= amount;
-    k_sem_give(&queue->lock);
-
-    adc_node_t *node = queue->head, *temp;
+uint16_t adc_queue_pop_amount(struct k_queue *queue, int16_t *array, uint16_t amount) {
+    uint16_t pop_amount = 0;
+    adc_node_t *node;
     for (int i = 0; i < amount; i++) {
-        temp = node;
-        node = node->next;
-        array[i] = temp->value;
-        k_mem_slab_free(&queue_slab, &temp);
+        if (k_queue_is_empty(queue)) break;
+        node = k_queue_get(queue, K_NO_WAIT);
+        array[i] = node->value;
+        k_mem_slab_free(&queue_slab, &node);
+        pop_amount++;
     }
-    queue->head = node;
+    return pop_amount;
 }
 
-void adc_queue_clean(adc_queue_t *queue) {
-    adc_node_t *node = queue->head, *temp;
-    while (node) {
-        temp = node;
-        node = node->next;
-        k_mem_slab_free(&queue_slab, &temp);
+void adc_queue_clean(struct k_queue *queue) {
+    adc_node_t *node;
+    while (!k_queue_is_empty(queue)) {
+        node = k_queue_get(queue, K_NO_WAIT);
+        k_mem_slab_free(&queue_slab, &node);
     }
-    queue->head = NULL;
-    queue->tail = NULL;
-    queue->size = 0;
 }

@@ -7,8 +7,9 @@
 #include <hal/nrf_saadc.h>
 
 #include "adc.h"
+#include "adc_service.h"
 
-#define ADC_SAMPLE_TIME_MS 500
+#define ADC_SAMPLE_TIME_MS 50
 
 #define EXTRA_SAMPLING 0
 #define CHANNEL_AMOUNT 2
@@ -47,12 +48,13 @@ static const struct adc_channel_cfg emg_right_channel_cfg = {
 static enum adc_action adc_callback(const struct device *dev,
                                     const struct adc_sequence *sequence,
 									uint16_t index) {
-	printk("adc sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
-	printk("ADC raw value: ");
-	for (int i = 0; i < BUFFER_SIZE; i++) {
-		printk("%d ", sampling_buffer[i]);
-	}
-	printk("\n");
+	// printk("adc sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
+	// printk("ADC raw value: ");
+	// for (int i = 0; i < BUFFER_SIZE; i++) {
+	// 	printk("%d ", sampling_buffer[i]);
+	// }
+	// printk("\n");
+	adc_data_update(sampling_buffer[0], sampling_buffer[1]);
 
 	return ADC_ACTION_REPEAT;
 }
