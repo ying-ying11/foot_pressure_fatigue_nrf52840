@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2022-09-12
+### [Changed]
+- EMG increase to 2 channels, and use internal timer to control sampling
+
 ## [0.2.1] - 2022-05-04
 ### [Added]
 - Queue model, have the pop, push, and clean function

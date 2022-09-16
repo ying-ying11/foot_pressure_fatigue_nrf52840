@@ -14,39 +14,16 @@
 #include "mpu6050.h"
 #include "mpu6050_service.h"
 
-#define ADC_SAMPLE_TIME 2
 #define IMU_SAMPLE_TIME 100
 
 #define ADC_DEVICE_NAME DT_LABEL(DT_INST(0, nordic_nrf_saadc))
-#define BUFFER_SIZE 8
 
 #define THREAD_STACK_SIZE 500
 #define THREAD_PRIORITY 5
 
 const struct device *adc_dev;
-static int16_t adc_buffer[BUFFER_SIZE];
 const struct device *i2c_dev;
 static struct mpu6050_data imu_data;
-
-void adc_sample_event() {
-	int err = 0;
-	while (true) {
-		err = adc_sample(adc_dev, adc_buffer, BUFFER_SIZE);
-		if (err) {
-			printk("Error in adc sampling: %d\n", err);
-			return;
-		}
-		adc_data_update(adc_buffer[0]);
-		// printk("adc sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
-
-		// printk("ADC raw value: ");
-		// for (int i = 0; i < BUFFER_SIZE; i++) {
-		// 	printk("%d ", adc_buffer[i]);
-		// }
-		// printk("\n");
-		k_msleep(ADC_SAMPLE_TIME);
-	}
-}
 
 void imu_sample_event() {
 	int err = 0;
@@ -79,17 +56,17 @@ void main(void) {
     adc_dev = device_get_binding(ADC_DEVICE_NAME);
 	if (adc_init(adc_dev)) return;
 
-	// // I2C setup
+	// I2C setup
 	i2c_dev = DEVICE_DT_GET(DT_NODELABEL(i2c1));
 	if (mpu6050_init(i2c_dev)) return;
 
 	if (bt_init()) return;
 
+	adc_sample(adc_dev);
 	while (1) {
-		notify_event();
+		// notify_event();
 		k_msleep(100);
 	}
 }
 
-K_THREAD_DEFINE(adc_sample_thread, THREAD_STACK_SIZE, adc_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);
-K_THREAD_DEFINE(imu_sample_thread, THREAD_STACK_SIZE, imu_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);
+// K_THREAD_DEFINE(imu_sample_thread, THREAD_STACK_SIZE, imu_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);

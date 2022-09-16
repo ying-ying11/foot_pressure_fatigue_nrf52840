@@ -2,52 +2,45 @@
 #include <bluetooth/gatt.h>
 #include <stdlib.h>
 
-#include "adc_queue.h"
 #include "adc_service.h"
+#include "adc_queue.h"
 
-#define MAX_VALUE_AMOUNT 160
+#define DATA_AMOUNT_PER_PAGKAGE 100
+
+K_QUEUE_DEFINE(EMG_LEFT);
+K_QUEUE_DEFINE(EMG_RIGHT);
 
 static struct bt_uuid_128 adc_uuid = BT_UUID_INIT_128(ADC_SERVICE_UUID_VAL);
-static struct bt_uuid_128 adc_raw_uuid = BT_UUID_INIT_128(BT_UUID_128_ENCODE(0xD16F7A3D, 0x1897, 0x40EA, 0x9629, 0xBDF749AC5991));
+static struct bt_uuid_128 emg_left_uuid = BT_UUID_INIT_128(BT_UUID_128_ENCODE(0xD16F7A3D, 0x1897, 0x40EA, 0x9629, 0xBDF749AC5991));
+static struct bt_uuid_128 emg_right_uuid = BT_UUID_INIT_128(BT_UUID_128_ENCODE(0xD16F7A3D, 0x1897, 0x40EA, 0x9629, 0xBDF749AC5992));
 
 static uint8_t package_num = 0;
+static uint8_t sampling_count = 0;
 
-static adc_queue_t *adc_values;
-static int16_t raw_array[MAX_VALUE_AMOUNT];
+static int16_t raw_array[DATA_AMOUNT_PER_PAGKAGE];
 static uint8_t buffer[247];
 
-static uint8_t adc_raw_notify_flag;
+static uint8_t emg_notify_flag;
 
-static void adc_raw_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
-	adc_raw_notify_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
-    if (!adc_raw_notify_flag && adc_values) {
-        adc_queue_clean(adc_values);
+static void emg_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
+	emg_notify_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
+    if (!emg_notify_flag) {
+        adc_queue_clean(&EMG_LEFT);
+        adc_queue_clean(&EMG_RIGHT);
         package_num = 0;
     }
 }
 
 BT_GATT_SERVICE_DEFINE(adc_service,
     BT_GATT_PRIMARY_SERVICE(&adc_uuid),
-    BT_GATT_CHARACTERISTIC(&adc_raw_uuid.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL, NULL),
-    BT_GATT_CCC(adc_raw_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE)
+    BT_GATT_CHARACTERISTIC(&emg_left_uuid.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL, NULL),
+    BT_GATT_CCC(emg_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+    BT_GATT_CHARACTERISTIC(&emg_right_uuid.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL, NULL),
 );
 
-void adc_data_update(int16_t data) {
-    if (!adc_raw_notify_flag) return;
-
-    if (!adc_values) adc_values = adc_queue_init();
-    if (adc_values->size > 1000) {
-        adc_queue_pop_amount(adc_values, raw_array, 100);
-        printk("blocked data over 1000, remove 100 data!!");
-    }
-    adc_queue_push(adc_values, data);
-
-}
-
-uint16_t adc_encode() {
-    uint8_t amount = adc_values->size > MAX_VALUE_AMOUNT ? MAX_VALUE_AMOUNT : adc_values->size;
-    adc_queue_pop_amount(adc_values, raw_array, amount);
-
+uint16_t adc_encode(struct k_queue* queue) {
+    uint16_t amount = adc_queue_pop_amount(queue, raw_array, DATA_AMOUNT_PER_PAGKAGE);
+    printk("Amount: %d\n", amount);
     // calculate buffer size 
     // package_number(1 bytes) | list_size(1 bytes) | data...(x) | check_sum(1 byte)
     uint16_t buffer_len = 3;
@@ -87,14 +80,31 @@ uint16_t adc_encode() {
 uint32_t prev_us_time = 0;
 
 void adc_raw_notify() {
-    if (!adc_raw_notify_flag || !adc_values) return;
+    if (!emg_notify_flag) return;
     
-    uint16_t len = adc_encode();
-    bt_gatt_notify(NULL, &adc_service.attrs[1], buffer, len);
+    uint16_t len = adc_encode(&EMG_LEFT);
     printk("buffer length: %d\n", len);
+    bt_gatt_notify(NULL, &adc_service.attrs[1], buffer, len);
+
+    len = adc_encode(&EMG_RIGHT);
+    printk("buffer length: %d\n", len);
+    bt_gatt_notify(NULL, &adc_service.attrs[4], buffer, len);
 
     // measure notification time interval
     uint32_t time = k_cyc_to_us_near32(k_cycle_get_32());
     printk("notify interval (us): %d\n", time - prev_us_time);
     prev_us_time = time;
+}
+
+void adc_data_update(int16_t left, int16_t right) {
+    if (!emg_notify_flag) return;
+    sampling_count++;
+
+    adc_queue_push(&EMG_LEFT, left);
+    adc_queue_push(&EMG_RIGHT, right);
+
+    if (sampling_count == DATA_AMOUNT_PER_PAGKAGE) {
+        adc_raw_notify();
+        sampling_count = 0;
+    } 
 }
