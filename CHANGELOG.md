@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2022-09-16
+
 ## [0.3.0] - 2022-09-12
 ### [Changed]
 - EMG increase to 2 channels, and use internal timer to control sampling
+- Use queue from zephyr lib instead queue coded by me
 
 ## [0.2.1] - 2022-05-04
 ### [Added]

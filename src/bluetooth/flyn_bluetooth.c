@@ -40,35 +40,60 @@ static int bt_ready() {
     return err;
 }
 
+/* connect callback */
+
+static struct bt_le_conn_param conn_param = {
+	// 90 ms to 105 ms
+	.interval_min = 72,
+	.interval_max = 84,
+	.latency = 1,
+	.timeout = 300
+};
+
+static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params) {
+	struct bt_conn_info info = {0};
+	int err;
+
+	printk("MTU exchange %s\n", att_err == 0 ? "successful" : "failed");
+
+	err = bt_conn_get_info(conn, &info);
+	if (err) {
+		printk("Failed to get connection info %d\n", err);
+		return;
+	}
+}
+
+static struct bt_gatt_exchange_params exchange_params = {
+	.func = exchange_func
+};
+
+static void connected(struct bt_conn *conn, uint8_t error) {
+	printk("Connected\n");
+
+	bt_conn_le_param_update(conn, &conn_param);
+
+	int err = bt_gatt_exchange_mtu(conn, &exchange_params);
+	if (err) {
+		printk("MTU exchange failed (err %d)\n", err);
+	} else {
+		printk("MTU exchange pending\n");
+	}
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason) {
+	printk("Disconnected\n");
+}
+
+static struct bt_conn_cb conn_callbacks = { 
+	.connected = connected,
+	.disconnected = disconnected
+};
+
 /* gatt callback */
 
-static struct bt_gatt_exchange_params exchange_params;
-
-// static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params) {
-// 	struct bt_conn_info info = {0};
-// 	int err;
-
-// 	printk("MTU exchange %s\n", att_err == 0 ? "successful" : "failed");
-
-// 	err = bt_conn_get_info(conn, &info);
-// 	if (err) {
-// 		printk("Failed to get connection info %d\n", err);
-// 		return;
-// 	}
-// }
 
 static void mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx) {
 	printk("Updated MTU: TX: %d RX: %d bytes\n", tx, rx);
-	
-	// if (tx == 247 && rx == 247) return;
-
-	// exchange_params.func = exchange_func;
-	// int err = bt_gatt_exchange_mtu(conn, &exchange_params);
-	// if (err) {
-	// 	printk("MTU exchange failed (err %d)\n", err);
-	// } else {
-	// 	printk("MTU exchange pending\n");
-	// }
 }
 
 static struct bt_gatt_cb gatt_callbacks = {
@@ -77,27 +102,27 @@ static struct bt_gatt_cb gatt_callbacks = {
 
 /* auth callback */
 
-static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey) {
-	char addr[BT_ADDR_LE_STR_LEN];
+// static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey) {
+// 	char addr[BT_ADDR_LE_STR_LEN];
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Passkey for %s: %06u\n", addr, passkey);
-}
+// 	printk("Passkey for %s: %06u\n", addr, passkey);
+// }
 
-static void auth_cancel(struct bt_conn *conn) {
-	char addr[BT_ADDR_LE_STR_LEN];
+// static void auth_cancel(struct bt_conn *conn) {
+// 	char addr[BT_ADDR_LE_STR_LEN];
 
-	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing cancelled: %s\n", addr);
-}
+// 	printk("Pairing cancelled: %s\n", addr);
+// }
 
-static struct bt_conn_auth_cb auth_cb_display = {
-	.passkey_display = auth_passkey_display,
-	.passkey_entry = NULL,
-	.cancel = auth_cancel,
-};
+// static struct bt_conn_auth_cb auth_cb_display = {
+// 	.passkey_display = auth_passkey_display,
+// 	.passkey_entry = NULL,
+// 	.cancel = auth_cancel,
+// };
 
 /* -------------------- */
 
@@ -113,7 +138,8 @@ int bt_init() {
     err = bt_ready();
     if (err) return err;
 
+	bt_conn_cb_register(&conn_callbacks);
 	bt_gatt_cb_register(&gatt_callbacks);
-	bt_conn_auth_cb_register(&auth_cb_display);
+	// bt_conn_auth_cb_register(&auth_cb_display);
     return err;
 }
