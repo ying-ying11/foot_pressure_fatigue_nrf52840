@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.3.1] - 2022-09-16
+### [Added]
+- use connect event to change mtu and connect parameters
+### [Removed]
+- auth callback becauce not use it
 
 ## [0.3.0] - 2022-09-12
 ### [Changed]
