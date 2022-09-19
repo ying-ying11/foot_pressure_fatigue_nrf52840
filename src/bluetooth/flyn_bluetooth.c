@@ -100,30 +100,6 @@ static struct bt_gatt_cb gatt_callbacks = {
 	.att_mtu_updated = mtu_updated
 };
 
-/* auth callback */
-
-// static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey) {
-// 	char addr[BT_ADDR_LE_STR_LEN];
-
-// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
-// 	printk("Passkey for %s: %06u\n", addr, passkey);
-// }
-
-// static void auth_cancel(struct bt_conn *conn) {
-// 	char addr[BT_ADDR_LE_STR_LEN];
-
-// 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
-
-// 	printk("Pairing cancelled: %s\n", addr);
-// }
-
-// static struct bt_conn_auth_cb auth_cb_display = {
-// 	.passkey_display = auth_passkey_display,
-// 	.passkey_entry = NULL,
-// 	.cancel = auth_cancel,
-// };
-
 /* -------------------- */
 
 int bt_init() {
@@ -140,6 +116,6 @@ int bt_init() {
 
 	bt_conn_cb_register(&conn_callbacks);
 	bt_gatt_cb_register(&gatt_callbacks);
-	// bt_conn_auth_cb_register(&auth_cb_display);
+	
     return err;
 }
