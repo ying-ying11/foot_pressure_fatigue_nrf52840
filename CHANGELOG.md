@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.1] - 2022-09-16
 ### [Added]
-- use connect event to change mtu and connect parameters
+- use connect event to change MTU and connect parameters
+### [Changed]
+- device name - Sarcopenia Project
 ### [Removed]
 - auth callback becauce not use it
 
