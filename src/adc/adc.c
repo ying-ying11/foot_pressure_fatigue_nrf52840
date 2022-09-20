@@ -9,7 +9,7 @@
 #include "adc.h"
 #include "adc_service.h"
 
-#define ADC_SAMPLE_TIME_MS 50
+#define ADC_SAMPLE_TIME_MS 2
 
 #define EXTRA_SAMPLING 0
 #define CHANNEL_AMOUNT 2

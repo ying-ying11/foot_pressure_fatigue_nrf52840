@@ -34,6 +34,9 @@ void imu_sample_event() {
 			return;
 		}
 		imu_data_update(imu_data.ax, imu_data.ay, imu_data.az, imu_data.gx, imu_data.gy, imu_data.gz);
+		
+		accelerometer_notify();
+		gyroscope_notify();
 
 		// printk("imu sample at: %d\n", k_cyc_to_us_near32(k_cycle_get_32()));
 
@@ -41,12 +44,6 @@ void imu_sample_event() {
 		// printk("gx: %d, gy: %d, gz: %d\n", imu_data.gx, imu_data.gy, imu_data.gz);
 		k_msleep(IMU_SAMPLE_TIME);
 	}
-}
-
-void notify_event() {
-	adc_raw_notify();
-	accelerometer_notify();
-	gyroscope_notify();
 }
 
 void main(void) {
@@ -63,10 +60,6 @@ void main(void) {
 	if (bt_init()) return;
 
 	adc_sample(adc_dev);
-	while (1) {
-		// notify_event();
-		k_msleep(100);
-	}
 }
 
-// K_THREAD_DEFINE(imu_sample_thread, THREAD_STACK_SIZE, imu_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);
+K_THREAD_DEFINE(imu_sample_thread, THREAD_STACK_SIZE, imu_sample_event, NULL, NULL, NULL, THREAD_PRIORITY, 0, 0);
