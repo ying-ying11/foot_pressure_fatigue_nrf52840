@@ -3,6 +3,7 @@
 
 typedef struct adc_node {
 
+    sys_snode_t snode;
     int16_t value;
 
 } adc_node_t;
