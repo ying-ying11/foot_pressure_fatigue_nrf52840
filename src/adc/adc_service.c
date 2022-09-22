@@ -20,22 +20,34 @@ static uint8_t sampling_count = 0;
 static int16_t raw_array[DATA_AMOUNT_PER_PAGKAGE];
 static uint8_t buffer[247];
 
-static uint8_t emg_notify_flag;
+static uint8_t notify_flag, left_flag, right_flag;
 
-static void emg_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
-	emg_notify_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
-    if (!emg_notify_flag) {
+static void notify_flag_control() {
+    notify_flag = left_flag && right_flag;
+    if (!notify_flag) {
         adc_queue_clean(&EMG_LEFT);
         adc_queue_clean(&EMG_RIGHT);
         package_num = 0;
+        sampling_count = 0;
     }
+}
+
+static void left_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
+	left_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
+    notify_flag_control();
+}
+
+static void right_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
+	right_flag = (value == BT_GATT_CCC_NOTIFY) ? 1 : 0;
+    notify_flag_control();
 }
 
 BT_GATT_SERVICE_DEFINE(adc_service,
     BT_GATT_PRIMARY_SERVICE(&adc_uuid),
     BT_GATT_CHARACTERISTIC(&emg_left_uuid.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL, NULL),
-    BT_GATT_CCC(emg_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+    BT_GATT_CCC(left_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
     BT_GATT_CHARACTERISTIC(&emg_right_uuid.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL, NULL),
+    BT_GATT_CCC(right_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 );
 
 uint16_t adc_encode(struct k_queue* queue) {
@@ -48,7 +60,7 @@ uint16_t adc_encode(struct k_queue* queue) {
     if (amount % 2) buffer_len++;
 
     // malloc buffer & add data size to head
-    buffer[0] = package_num++;
+    buffer[0] = package_num;
     buffer[1] = amount;
 
     // put data into buffer
@@ -80,8 +92,9 @@ uint16_t adc_encode(struct k_queue* queue) {
 uint32_t prev_us_time = 0;
 
 void adc_raw_notify() {
-    if (!emg_notify_flag) return;
+    if (!notify_flag) return;
     
+    printk("package number: %d\n", package_num);
     uint16_t len = adc_encode(&EMG_LEFT);
     printk("buffer length: %d\n", len);
     bt_gatt_notify(NULL, &adc_service.attrs[1], buffer, len);
@@ -89,6 +102,7 @@ void adc_raw_notify() {
     len = adc_encode(&EMG_RIGHT);
     printk("buffer length: %d\n", len);
     bt_gatt_notify(NULL, &adc_service.attrs[4], buffer, len);
+    package_num++;
 
     // measure notification time interval
     uint32_t time = k_cyc_to_us_near32(k_cycle_get_32());
@@ -97,7 +111,7 @@ void adc_raw_notify() {
 }
 
 void adc_data_update(int16_t left, int16_t right) {
-    if (!emg_notify_flag) return;
+    if (!notify_flag) return;
     sampling_count++;
 
     adc_queue_push(&EMG_LEFT, left);
