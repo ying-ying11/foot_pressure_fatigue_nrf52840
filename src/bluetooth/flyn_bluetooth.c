@@ -43,45 +43,20 @@ static int bt_ready() {
 /* connect callback */
 
 static struct bt_le_conn_param conn_param = {
-	// 90 ms to 105 ms
-	.interval_min = 72,
-	.interval_max = 84,
+	// 15 ms to 15 ms
+	.interval_min = 12,
+	.interval_max = 12,
 	.latency = 1,
-	.timeout = 300
-};
-
-static void exchange_func(struct bt_conn *conn, uint8_t att_err, struct bt_gatt_exchange_params *params) {
-	struct bt_conn_info info = {0};
-	int err;
-
-	printk("MTU exchange %s\n", att_err == 0 ? "successful" : "failed");
-
-	err = bt_conn_get_info(conn, &info);
-	if (err) {
-		printk("Failed to get connection info %d\n", err);
-		return;
-	}
-}
-
-static struct bt_gatt_exchange_params exchange_params = {
-	.func = exchange_func
+	.timeout = 30
 };
 
 static void connected(struct bt_conn *conn, uint8_t error) {
 	printk("Connected\n");
-
 	bt_conn_le_param_update(conn, &conn_param);
-
-	int err = bt_gatt_exchange_mtu(conn, &exchange_params);
-	if (err) {
-		printk("MTU exchange failed (err %d)\n", err);
-	} else {
-		printk("MTU exchange pending\n");
-	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason) {
-	printk("Disconnected\n");
+	printk("Disconnected, reason:%d\n", reason);
 }
 
 static struct bt_conn_cb conn_callbacks = { 

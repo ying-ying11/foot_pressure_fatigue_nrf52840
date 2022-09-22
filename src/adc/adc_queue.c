@@ -15,7 +15,7 @@ void adc_queue_push(struct k_queue *queue, int16_t value) {
         node->value = value;
     }
     else {
-        printk("Memory allocation fail");
+        printk("Memory allocation fail\n");
         return;
     }
 
