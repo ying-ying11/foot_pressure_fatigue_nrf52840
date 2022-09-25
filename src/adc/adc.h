@@ -1,7 +1,7 @@
 #ifndef FLYN_ADC_H
 #define FLYN_ADC_H
 
-#define ADC_RESOLUTION 10
+#define ADC_RESOLUTION 12
 
 #include <device.h>
 
